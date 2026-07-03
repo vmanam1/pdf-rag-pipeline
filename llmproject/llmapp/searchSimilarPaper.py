@@ -24,6 +24,30 @@ papers_data_json = os.path.join(
     "combined_data.json"
 )
 
+
+def _load_or_build_faiss_index(index_file, mapping_file_path):
+    if os.path.exists(index_file):
+        return faiss.read_index(index_file)
+
+    with open(mapping_file_path, 'r', encoding='utf-8') as f:
+        paper_map = json.load(f)
+
+    first_entry = next(iter(paper_map.values()), None)
+    if not first_entry:
+        raise FileNotFoundError(f"No vectors available in {mapping_file_path} to build FAISS index.")
+
+    embedding_dim = len(first_entry["vector"])
+    index = faiss.IndexFlatL2(embedding_dim)
+
+    ordered_keys = sorted(paper_map.keys(), key=lambda value: int(value))
+    for key in ordered_keys:
+        vector = np.array(paper_map[key]["vector"], dtype='float32')
+        index.add(np.expand_dims(vector, axis=0))
+
+    os.makedirs(os.path.dirname(index_file), exist_ok=True)
+    faiss.write_index(index, index_file)
+    return index
+
 # Load data
 def load_json(file_path):
     with open(file_path, 'r', encoding='utf-8') as f:
@@ -38,7 +62,7 @@ def load_faiss_index(index_file):
 # Search for most similar papers/sections based on input vector
 def search_similar_papers(query_vector,k=5):
     
-    faiss_index = load_faiss_index(faiss_index_file)
+    faiss_index = _load_or_build_faiss_index(faiss_index_file, mapping_file)
     paper_map = load_json(mapping_file)
     papers_data = load_json(papers_data_json)
     # Ensure query vector is in the correct shape (1, dim)
