@@ -2,6 +2,6 @@ services:
   - type: web
     name: pdf-rag-pipeline
     env: docker
-    plan: starter
+    plan: free
     autoDeploy: true
-    healthCheckPath: /
+    healthCheckPath: /health/

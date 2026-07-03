@@ -22,4 +22,4 @@ COPY . .
 EXPOSE 8000
 
 # Run the Django app in production mode
-CMD ["gunicorn", "llmproject.wsgi:application", "--chdir", "llm-integration/llmproject", "--bind", "0.0.0.0:8000"]
+CMD ["sh", "-c", "exec gunicorn llmproject.wsgi:application --chdir llm-integration/llmproject --bind 0.0.0.0:${PORT:-8000}"]
