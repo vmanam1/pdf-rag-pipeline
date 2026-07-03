@@ -2,6 +2,7 @@ from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
 from . import clip_vectorization,searchSimilarPaper
 import json
+import re
 from django.views.decorators.csrf import csrf_exempt
 from groq import Groq
 from django.conf import settings
@@ -15,15 +16,32 @@ groq_api_key = os.environ.get("GROQ_API_KEY", "").strip()
 groq_model = os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant")
 client = Groq(api_key=groq_api_key) if groq_api_key else None
 
+
+def _fallback_answer(query: str, context: str) -> str:
+    """Return a concise, readable answer when the hosted LLM is unavailable."""
+    context = context.strip()
+    if not context:
+        return (
+            "I could not find matching paper content for that query yet. "
+            "Try a more specific question or add the Groq API key to enable LLM answers."
+        )
+
+    cleaned_context = re.sub(r"\n{3,}", "\n\n", context)
+    return (
+        f"Based on the retrieved paper content, here is the most relevant context for: {query}\n\n"
+        f"{cleaned_context[:3000]}"
+    )
+
 @csrf_exempt
 def getDataFromOpenAIAPI(request):
     if request.method == "POST":
         try:
-            if client is None:
-                return JsonResponse({"error": "GROQ_API_KEY is not configured."}, status=500)
-
             data = json.loads(request.body)
             query = data.get("query", "")
+
+            if client is None:
+                return JsonResponse({"response": _fallback_answer(query, query)})
+
             completion = client.chat.completions.create(
                     model=groq_model,
                     messages=[
