@@ -1,5 +1,5 @@
-# Base image with Python and PyTorch already available
-FROM pytorch/pytorch:1.13.1-cpu
+# Base image with a standard Python runtime
+FROM python:3.10-slim
 
 # Set the working directory
 WORKDIR /app
@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y \
 
 # Install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
 # Copy your code
 COPY . .
