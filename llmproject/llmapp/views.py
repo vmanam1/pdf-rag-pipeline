@@ -32,15 +32,29 @@ def _fallback_answer(query: str, context: str) -> str:
         f"{cleaned_context[:3000]}"
     )
 
+
+def _extract_query_and_context(prompt: str) -> tuple[str, str]:
+    query_marker = "|| User Query:"
+    context_marker = "Fetched From Database :"
+
+    if query_marker in prompt and prompt.startswith(context_marker):
+        context_part, query_part = prompt.split(query_marker, 1)
+        context = context_part.replace(context_marker, "", 1).strip()
+        query = query_part.strip()
+        return query, context
+
+    return prompt, prompt
+
 @csrf_exempt
 def getDataFromOpenAIAPI(request):
     if request.method == "POST":
         try:
             data = json.loads(request.body)
             query = data.get("query", "")
+            answer_query, answer_context = _extract_query_and_context(query)
 
             if client is None:
-                return JsonResponse({"response": _fallback_answer(query, query)})
+                return JsonResponse({"response": _fallback_answer(answer_query, answer_context)})
 
             completion = client.chat.completions.create(
                     model=groq_model,
@@ -66,9 +80,18 @@ def getDataFromOpenAIAPI(request):
             ans = ""
             for chunk in completion:
                 ans += chunk.choices[0].delta.content or ""
+            if not ans.strip():
+                ans = _fallback_answer(answer_query, answer_context)
             return JsonResponse({'response': ans})
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
+            data = {}
+            try:
+                data = json.loads(request.body)
+            except Exception:
+                pass
+            query = data.get("query", "") if isinstance(data, dict) else ""
+            answer_query, answer_context = _extract_query_and_context(query)
+            return JsonResponse({'response': _fallback_answer(answer_query, answer_context)})
     return JsonResponse({'error': 'Invalid request method.'}, status=400)
 
 @csrf_exempt
