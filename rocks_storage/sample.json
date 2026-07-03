@@ -1,0 +1,23 @@
+{
+  "paper_1": {
+    "title": "Efficient Neural Network Training Techniques",
+    "authors": "John Doe, Jane Smith",
+    "abstract": "This paper explores advanced techniques to optimize the training process of neural networks, reducing computational costs while maintaining high accuracy.",
+    "sections": {
+      "Methodology": "We introduce a new optimizer based on gradient descent with adaptive learning rates.",
+      "Architecture": "Our model uses a modified ResNet-50 structure with additional attention layers.",
+      "Results": "Experiments show a 20% improvement in training speed without loss of accuracy.",
+      "Conclusion": "The proposed techniques demonstrate significant improvements in efficiency and applicability."
+    },
+    "images": {
+      "image_1": {
+        "image_desc": "Network architecture diagram",
+        "image_location": "https://drive.google.com/file/d/1qsyyalZt2Tl5t0WuUVo1AGq6X-V0Oeca/view?usp=drive_link"
+      },
+      "image_2": {
+        "image_desc": "Training accuracy graph",
+        "image_location": "https://drive.google.com/file/d/12kMwZTNm4iKhCgX3B8aQ2XCK5Y3Jbdr2/view?usp=drive_link"
+      }
+    }
+  }
+}

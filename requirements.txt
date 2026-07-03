@@ -1,0 +1,10 @@
+django==5.1.3
+gunicorn==22.0.0
+faiss-cpu==1.8.0.post1
+rocksdict==0.3.25
+groq==0.11.0
+numpy==1.26.4
+transformers==4.35.0
+torch==1.13.1
+Pillow==9.0.1
+requests==2.31.0

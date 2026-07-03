@@ -1,0 +1,13 @@
+*.env
+*.pyc
+__pycache__/
+.DS_Store
+.conda/
+django-env/
+downloaded_images/
+staticfiles/
+media/
+llm-integration/llmproject/db.sqlite3
+/pdf-rag-venv/bin
+/pdf-rag-venv/lib
+/faiss_storage/faiss_index.idx

@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF RAG LLM</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #181818;
+            color: #e0e0e0;
+        }
+
+        .container {
+            width: 80%;
+            margin: 50px auto;
+            background-color: #2c2c2c;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .input-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .input-box {
+            width: 100%;
+            padding: 20px;  
+            margin-bottom: 20px;
+            border: 1px solid #444;
+            border-radius: 4px;
+            background-color: #333;
+            color: #e0e0e0;
+            font-size: 18px;  
+            height: 60px;  
+            box-sizing: border-box;
+            padding-right: 50px; /* Space for the button */
+            resize: none; /* Disable manual resizing */
+            min-height: 30px; /* Minimum height */
+        }
+
+        .input-box:focus {
+            outline: none;
+            border-color: #28a745;
+        }
+
+        .image-preview {
+            position: absolute;
+            top: 50%;
+            right: 10px;
+            transform: translateY(-80%);
+            width: 40px;
+            height: 40px;
+            border-radius: 4px;
+            overflow: hidden;
+            cursor: pointer;
+            background-color: rgba(0, 0, 0, 0.2);
+        }
+
+        .image-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .file-btn {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-80%);
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            padding: 8px 15px;
+            font-size: 14px;
+        }
+
+        .file-btn:hover {
+            background-color: #218838;
+        }
+
+        .response-box {
+            margin-top: 20px;
+            padding: 12px;
+            border: 1px solid #444;
+            background-color: #333;
+            min-height: 100px;
+            color: #e0e0e0;
+        }
+        #heading {
+            padding-left: 37%;
+        }
+        .btn {
+            padding: 12px 25px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background-color: #218838;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                width: 95%;
+                padding: 15px;
+            }
+
+            .input-box {
+                padding: 10px;
+                font-size: 14px;
+            }
+
+            .btn {
+                padding: 10px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1 id="heading">PDF RAG LLM</h1>
+    <div class="input-wrapper">
+        <textarea id="query" class="input-box" placeholder="Ask a question..." oninput="autoExpand(this)"></textarea>
+        <button class="file-btn" onclick="document.getElementById('file-input').click()">+</button>
+        <input type="file" id="file-input" style="display:none;" accept="image/*">
+        <div class="image-preview" id="image-preview" style="display: none;" onclick="removeImage()">
+            <img id="preview-img" src="" alt="">
+        </div>
+    </div>
+    <button class="btn" id="ask-btn">Ask</button>
+
+    <div class="response-box" id="response-box">
+        <!-- AI response will appear here -->
+    </div>
+</div>
+
+<script>
+    let imageFilePath = "";
+    function autoExpand(field) {
+        field.style.height = 'auto';
+        
+        field.style.height = (field.scrollHeight) + 'px';
+    }
+    const uploadImage = async (file) => {
+            const formData = new FormData();
+            formData.append('image', file);
+
+            try {
+                const response = await fetch('/uploadFile/', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    imageFilePath = data.file_path;
+                } else {
+                    const errorData = await response.json();
+                    console.error('Error uploading image:', errorData.error);
+                }
+            } catch (error) {
+                console.error('Request failed:', error);
+            }
+        };
+    document.getElementById('file-input').addEventListener('change', function() {
+        const file = this.files[0]; 
+        if (file) {
+            uploadImage(file)
+        }
+    });
+    document.getElementById('file-input').addEventListener('change', function() {
+        const file = this.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const imagePreview = document.getElementById('image-preview');
+                const previewImg = document.getElementById('preview-img');
+                previewImg.src = event.target.result;
+                imagePreview.style.display = 'block'; 
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+    document.getElementById("ask-btn").addEventListener("click", function () {
+    const query = document.getElementById("query").value;
+
+    let textEmbedding = null, imageEmbedding = null;
+    let similarContent = null; // Placeholder for similar content
+
+    console.log("Query:", query); // Log the query to check if it's being captured properly
+
+    try {
+        // Fetch text embedding for the query
+        fetch('/getEmbedding/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ type: "text", text: query })
+        })
+        .then(response => {
+            console.log("Text embedding response status:", response.status);
+            return response.json();
+        })
+        .then(data => {
+            textEmbedding = data.response;
+            console.log("Text embedding", textEmbedding);
+
+            // Now, request similar content based on the text embedding
+            fetch('/getSimilarContent/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ embedding: textEmbedding })
+            })
+            .then(response => {
+                console.log("Similar content response status:", response.status);
+                return response.json();
+            })
+            .then(data => {
+                similarContent = data.response;
+                console.log("Similar content", similarContent);
+                
+                const prompt = `Fetched From Database : ${similarContent} || User Query: ${query}`;
+
+                // Send both the query and the similar content to the LLM
+                fetch('/getDataFromLLM/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query: prompt })
+                })
+                .then(response => {
+                    console.log("LLM response status:", response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.response) {
+                        document.getElementById("response-box").innerHTML = data.response;
+                    } else {
+                        document.getElementById("response-box").innerText = "Error: " + (data.error || "Unexpected error.");
+                    }
+                })
+                .catch(error => {
+                    console.error("Error during LLM request:", error); // Log error details
+                    document.getElementById("response-box").innerText = "Error: " + error;
+                });
+            })
+            .catch(error => {
+                console.error("Error fetching similar content:", error); // Log error details
+            });
+        })
+        .catch(error => {
+            console.error("Error fetching text embedding:", error); // Log error details
+        });
+
+        // Handle image embedding if needed (similar to text embedding)
+        if (imageFilePath) {
+            console.log("Image file path:", imageFilePath); // Log the image file path
+            fetch('/getEmbedding/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ type: "image", imageFilePath: imageFilePath })
+            })
+            .then(response => response.json())
+            .then(data => {
+                imageEmbedding = data.response;
+                console.log("Image embedding", imageEmbedding);
+            })
+            .catch(error => {
+                console.error("Error fetching image embedding:", error); // Log error details
+            });
+        }
+    } catch (error) {
+        console.error("Unexpected error in the try-catch block:", error); // Catch and log any unexpected errors
+        document.getElementById("response-box").innerText = "Unexpected error: " + error;
+    }
+});
+    function removeImage() {
+        document.getElementById('file-input').value = '';
+        document.getElementById('image-preview').style.display = 'none';
+    }
+</script>
+
+</body>
+</html>
